@@ -1,28 +1,42 @@
 import os
 import re
 
-# folder do przeszukania
 folder = "."
 
-# rozpoznanie wzorca w nazwach plików
-pattern = re.compile(r"\((\d+)\)")
+pattern_paren = re.compile(r"\((\d+)\)")
+
+
+pattern_number = re.compile(r'(?<!\d)(\d{1,3})(?!\d)')
 
 changes = []
 
-# iteracja po plikach w folderze
 for filename in os.listdir(folder):
     filepath = os.path.join(folder, filename)
     if not os.path.isfile(filepath):
-        continue  # pominięcie folderów
+        continue
 
-    match = pattern.search(filename)
-    if match:
-        num = int(match.group(1))
-        new_num = f"({num:03d})"  # format 3-cyfrowy, może w następnej wersji dodam obsługę większych liczb w nazwach plików
-        new_name = pattern.sub(new_num, filename)
-        if new_name != filename:
-            new_path = os.path.join(folder, new_name)
-            changes.append((filepath, new_path))
+    new_name = filename
+
+    match_paren = pattern_paren.search(new_name)
+    if match_paren:
+        num = int(match_paren.group(1))
+        new_num = f"({num:03d})"
+        new_name = pattern_paren.sub(new_num, new_name)
+
+    name_only, ext = os.path.splitext(new_name)
+
+    def repl(m):
+        num = int(m.group(1))
+        return f"{num:03d}"
+
+    name_only_new = pattern_number.sub(repl, name_only)
+
+    new_name = name_only_new + ext
+
+    if new_name != filename:
+        new_path = os.path.join(folder, new_name)
+        changes.append((filepath, new_path))
+
 
 if not changes:
     print("Nie znaleziono plików do zmiany.")
@@ -32,7 +46,6 @@ print("\nProponowane zmiany:\n")
 for old, new in changes:
     print(f"{os.path.basename(old)}  ->  {os.path.basename(new)}")
 
-# zapytanie o potwierdzenie
 response = input("\nZaakceptować zmiany? (y/n): ").strip().lower()
 
 if response == "y":
